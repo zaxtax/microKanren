@@ -1,9 +1,3 @@
-# microKanren
-python implementation of µKanren
-
-## Short example
-
-````python
 from microkanren import var, extract
 
 x = var('x')
@@ -13,4 +7,3 @@ body = (x == q) & (x == 3)
 res = body.run()
 for solution in res:
     print(extract(solution, q))
-````
