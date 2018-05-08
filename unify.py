@@ -1,4 +1,8 @@
 from collections import Sequence
+from classes import Variable
+
+class UnifyException(Exception):
+    pass
 
 def occurs(x, u, subst):
     if isinstance(u, Variable):

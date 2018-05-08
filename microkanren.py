@@ -1,5 +1,6 @@
 from itertools import cycle, islice
-from unify import unify, find
+from unify import unify, find, UnifyException
+from classes import Variable
 
 def roundrobin(*iterables):
     "roundrobin('ABC', 'D', 'EF') --> A D E B F C"
@@ -82,28 +83,13 @@ class Equals(Model):
             yield s
         except UnifyException:
             return []
-        
-class Variable(object):
-    def __init__(self, name):
-        self.name = name
 
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        return self.name
-
-class Subst(dict):
-    def __getitem__(self, key):
-        if isinstance(key, Model) and isinstance(key.state, Variable):
-            return find(key.state, self)
-        else:
-            return self.get(key)
+def extract(subst, key):
+    if isinstance(key, Model) and isinstance(key.state, Variable):
+        return find(key.state, subst)
+    else:
+        return subst[key]
     
 def var(name):
     v = Variable(name)
     return Model(v)
-    
-
-class UnifyException(Exception):
-    pass
