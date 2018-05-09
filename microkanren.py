@@ -1,6 +1,5 @@
 from itertools import cycle, islice
-from unify import unify, find, UnifyException
-from classes import Variable
+from collections import Sequence
 
 def roundrobin(*iterables):
     "roundrobin('ABC', 'D', 'EF') --> A D E B F C"
@@ -23,29 +22,55 @@ def stream_map(constraint, s):
         for j in constraint(i):
             yield j
 
-class Model:
-    def __init__(self, state):
-        self.state = state
+def id_eq(x, y):
+    return id(x) == id(y)
 
+
+class Model:
     def __eq__(self, other):
         return Equals(self, other)
-    
+
     def __and__(self, other):
         return Conj(self, other)
-    
+
     def __or__(self, other):
         return Disj(self, other)
 
     def run(self, subst={}):
         raise NotImplementedError()
 
+class Variable(Model):
+    def __init__(self, name):
+        self.name = name
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return self.name
+
+    def __hash__(self):
+        return object.__hash__(self)
+
+class Equals(Model):
+    def __init__(self, g1, g2):
+        self.g1 = g1
+        self.g2 = g2
+        super().__init__()
+
+    def run(self, subst={}):
+        try:
+            s = unify(find(self.g1, subst),
+                      find(self.g2, subst), subst)
+            yield s
+        except UnifyException:
+            return []
 
 class Disj(Model):
     def __init__(self, g1, g2):
-        self.state = None
         self.g1 = g1
         self.g2 = g2
-        super().__init__(self.state)
+        super().__init__()
 
     def run(self, subst={}):
         return stream_append(self.g1.run(subst), self.g2.run(subst))
@@ -53,43 +78,62 @@ class Disj(Model):
 
 class Conj(Model):
     def __init__(self, g1, g2):
-        self.state = None
         self.g1 = g1
         self.g2 = g2
-        super().__init__(self.state)
+        super().__init__()
 
     def run(self, subst={}):
         return stream_map(self.g2.run, self.g1.run(subst))
-                
-class Equals(Model):
-    def __init__(self, g1, g2):
-        self.state = None
-        if isinstance(g1, Model):
-            g1 = g1.state
-        if isinstance(g2, Model):
-            g2 = g2.state
 
-        if g1 is None or g2 is None:
-            raise NotImplementedError()
-            
-        self.g1 = g1
-        self.g2 = g2
-        super().__init__(self.state)
+class UnifyException(Exception):
+    pass
 
-    def run(self, subst={}):
-        try:                    
-            s = unify(find(self.g1, subst),
-                      find(self.g2, subst), subst)
-            yield s
-        except UnifyException:
-            return []
+def occurs(x, u, subst):
+    if isinstance(u, Variable):
+        return id_eq(x, y)
+    if isinstance(u, (tuple, list)):
+        return any(occurs(x, find(i, subst), subst)
+                   for i in u)
+    return False
+
+
+def find(x, subst):
+    if x in subst:
+        return find(subst[x], subst)
+    else:
+        return x
+
+
+def extend_subst(x, v, subst):
+    if occurs(x, v, subst):
+        raise UnifyException(f"{x} occurs in {v}")
+    else:
+        subst = subst.copy()
+        subst[x] = v
+        return subst
+
+
+def unify(x, y, subst):
+    if id_eq(x, y)
+        return subst
+    if isinstance(x, Variable):
+        return extend_subst(x, y, subst)
+    if isinstance(y, Variable):
+        return unify(y, x, subst)
+    if (isinstance(x, Sequence) and
+        isinstance(y, Sequence) and
+        len(x) == len(y)):
+        for i, j in zip(x, y):
+            subst = unify(find(i, subst), find(j, subst), subst)
+        return subst
+    raise UnifyException(f"Failed to unify {x} and {y}")
+
 
 def extract(subst, key):
     if isinstance(key, Model) and isinstance(key.state, Variable):
         return find(key.state, subst)
     else:
         return subst[key]
-    
+
 def var(name):
-    v = Variable(name)
-    return Model(v)
+    return Variable(name)
