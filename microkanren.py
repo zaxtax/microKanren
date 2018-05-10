@@ -89,7 +89,7 @@ class UnifyException(Exception):
 
 def occurs(x, u, subst):
     if isinstance(u, Variable):
-        return id_eq(x, y)
+        return id_eq(x, u)
     if isinstance(u, (tuple, list)):
         return any(occurs(x, find(i, subst), subst)
                    for i in u)
