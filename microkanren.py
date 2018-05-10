@@ -25,7 +25,6 @@ def stream_map(constraint, s):
 def id_eq(x, y):
     return id(x) == id(y)
 
-
 class Model:
     def __eq__(self, other):
         return Equals(self, other)
@@ -114,7 +113,7 @@ def extend_subst(x, v, subst):
 
 
 def unify(x, y, subst):
-    if id_eq(x, y)
+    if id_eq(x, y):
         return subst
     if isinstance(x, Variable):
         return extend_subst(x, y, subst)
@@ -128,12 +127,18 @@ def unify(x, y, subst):
         return subst
     raise UnifyException(f"Failed to unify {x} and {y}")
 
-
-def extract(subst, key):
-    if isinstance(key, Model) and isinstance(key.state, Variable):
-        return find(key.state, subst)
-    else:
-        return subst[key]
-
 def var(name):
     return Variable(name)
+
+def relational(f):
+    def delay(*args):
+        yield f(*args)
+    return delay
+
+@relational
+def anyo():
+    return (x == 1) | anyo()
+
+def force(x):
+    for i in x:
+        return i
