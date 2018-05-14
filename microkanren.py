@@ -1,29 +1,34 @@
-from itertools import cycle, islice
 from collections import Sequence
 
-def roundrobin(*iterables):
-    "roundrobin('ABC', 'D', 'EF') --> A D E B F C"
-    # Recipe credited to George Sakkis
-    pending = len(iterables)
-    nexts = cycle(iter(it) for it in iterables)
-    while pending:
-        try:
-            for g in nexts:
-                yield next(g)
-        except StopIteration:
-            pending -= 1
-            nexts = cycle(islice(nexts, pending))
 
-def stream_append(*streams):
-    return roundrobin(*streams)
+def stream_append(x, y, subst):
+    while True:
+        if isinstance(x, Relation):
+            x, y = y, x.force()
+        elif isinstance(y, Relation):
+            y = y.force()
+        elif isinstance(x, Model):
+            x = x.run(subst)
+        else:
+            try:
+                yield next(x)
+                y, x = x, y
+            except StopIteration:
+                for i in y:
+                    yield i
+                return
+
 
 def stream_map(constraint, s):
-    for i in s:
-        for j in constraint(i):
-            yield j
+    subst = next(s)
+    yield from stream_append(constraint(subst),
+                             stream_map(constraint, s),
+                             subst)
+
 
 def id_eq(x, y):
     return id(x) == id(y)
+
 
 class Model:
     def __eq__(self, other):
@@ -32,11 +37,18 @@ class Model:
     def __and__(self, other):
         return Conj(self, other)
 
+    def __rand__(self, other):
+        return Conj(other, self)
+
     def __or__(self, other):
         return Disj(self, other)
 
+    def __ror__(self, other):
+        return Disj(other, self)
+
     def run(self, subst={}):
         raise NotImplementedError()
+
 
 class Variable(Model):
     def __init__(self, name):
@@ -50,6 +62,7 @@ class Variable(Model):
 
     def __hash__(self):
         return object.__hash__(self)
+
 
 class Equals(Model):
     def __init__(self, g1, g2):
@@ -65,6 +78,7 @@ class Equals(Model):
         except UnifyException:
             return []
 
+
 class Disj(Model):
     def __init__(self, g1, g2):
         self.g1 = g1
@@ -72,7 +86,7 @@ class Disj(Model):
         super().__init__()
 
     def run(self, subst={}):
-        return stream_append(self.g1.run(subst), self.g2.run(subst))
+        return stream_append(self.g1, self.g2, subst)
 
 
 class Conj(Model):
@@ -84,8 +98,10 @@ class Conj(Model):
     def run(self, subst={}):
         return stream_map(self.g2.run, self.g1.run(subst))
 
+
 class UnifyException(Exception):
     pass
+
 
 def occurs(x, u, subst):
     if isinstance(u, Variable):
@@ -127,18 +143,34 @@ def unify(x, y, subst):
         return subst
     raise UnifyException(f"Failed to unify {x} and {y}")
 
+
 def var(name):
     return Variable(name)
+
+
+class Relation(Model):
+    def __init__(self, g):
+        self.g = g
+
+    def force(self):
+        for i in self.g:
+            return i
+
+    def run(self, subst={}):
+        "Convienence function"
+        return self.force().run(subst)
+
 
 def relational(f):
     def delay(*args):
         yield f(*args)
-    return delay
+
+    def wrap(*args):
+        return Relation(delay(*args))
+
+    return wrap
+
 
 @relational
-def anyo():
-    return (x == 1) | anyo()
-
-def force(x):
-    for i in x:
-        return i
+def anyo(g):
+    return g | anyo(g)
