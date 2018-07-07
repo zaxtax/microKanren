@@ -14,6 +14,8 @@ def stream_append(x, y, subst):
                 yield next(x)
                 y, x = x, y
             except StopIteration:
+                if isinstance(y, Model):
+                    y = y.run(subst)
                 for i in y:
                     yield i
                 return
@@ -45,6 +47,10 @@ class Model:
 
     def __ror__(self, other):
         return Disj(other, self)
+
+    def and(self, other):
+        "Convienence function"
+        self = Conj(self, other)
 
     def run(self, subst={}):
         raise NotImplementedError()
@@ -119,6 +125,17 @@ def find(x, subst):
         return x
 
 
+def ground(x, subst):
+    if x in subst:
+        return ground(subst[x], subst)
+    elif isinstance(x, list):
+        return [ground(i, subst) for i in x]
+    elif isinstance(x, tuple):
+        return tuple(ground(i, subst) for i in x)
+    else:
+        return x
+
+
 def extend_subst(x, v, subst):
     if occurs(x, v, subst):
         raise UnifyException(f"{x} occurs in {v}")
@@ -169,8 +186,3 @@ def relational(f):
         return Relation(delay(*args))
 
     return wrap
-
-
-@relational
-def anyo(g):
-    return g | anyo(g)
