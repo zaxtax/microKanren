@@ -48,9 +48,10 @@ class Model:
     def __ror__(self, other):
         return Disj(other, self)
 
-    def and(self, other):
+    def add(self, other):
         "Convienence function"
         self = Conj(self, other)
+        return self
 
     def run(self, subst=None):
         raise NotImplementedError()
