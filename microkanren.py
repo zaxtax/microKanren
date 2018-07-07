@@ -1,4 +1,5 @@
 from collections import Sequence
+import copy
 
 
 def stream_append(x, y, subst):
@@ -139,6 +140,12 @@ def ground(x, subst):
         return [ground(i, subst) for i in x]
     elif isinstance(x, tuple):
         return tuple(ground(i, subst) for i in x)
+    elif hasattr(x, '__dict__'):
+        x = copy.copy(x)
+        for i in vars(x):
+            v = ground(getattr(x, i), subst)
+            setattr(x, i, v)
+        return x
     else:
         return x
 
@@ -159,11 +166,19 @@ def unify(x, y, subst):
         return extend_subst(x, y, subst)
     if isinstance(y, Variable):
         return unify(y, x, subst)
-    if (isinstance(x, Sequence) and
-        isinstance(y, Sequence) and
-        len(x) == len(y)):
+    if ((isinstance(x, Sequence) and
+         isinstance(y, Sequence) and
+         len(x) == len(y))):
         for i, j in zip(x, y):
             subst = unify(find(i, subst), find(j, subst), subst)
+        return subst
+    if ((hasattr(x, '__dict__') and
+         hasattr(y, '__dict__') and
+         vars(x).keys() == vars(y).keys())):
+        for i in vars(x):
+            subst = unify(find(getattr(x, i), subst),
+                          find(getattr(y, i), subst),
+                          subst)
         return subst
     raise UnifyException(f"Failed to unify {x} and {y}")
 
