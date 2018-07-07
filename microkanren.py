@@ -52,7 +52,7 @@ class Model:
         "Convienence function"
         self = Conj(self, other)
 
-    def run(self, subst={}):
+    def run(self, subst=None):
         raise NotImplementedError()
 
 
@@ -76,7 +76,9 @@ class Equals(Model):
         self.g2 = g2
         super().__init__()
 
-    def run(self, subst={}):
+    def run(self, subst=None):
+        if subst is None:
+            subst = {}
         try:
             s = unify(find(self.g1, subst),
                       find(self.g2, subst), subst)
@@ -91,7 +93,9 @@ class Disj(Model):
         self.g2 = g2
         super().__init__()
 
-    def run(self, subst={}):
+    def run(self, subst=None):
+        if subst is None:
+            subst = {}
         return stream_append(self.g1, self.g2, subst)
 
 
@@ -101,7 +105,9 @@ class Conj(Model):
         self.g2 = g2
         super().__init__()
 
-    def run(self, subst={}):
+    def run(self, subst=None):
+        if subst is None:
+            subst = {}
         return stream_map(self.g2.run, self.g1.run(subst))
 
 
@@ -173,7 +179,9 @@ class Relation(Model):
         for i in self.g:
             return i
 
-    def run(self, subst={}):
+    def run(self, subst=None):
+        if subst is None:
+            subst = {}
         "Convienence function"
         return self.force().run(subst)
 
