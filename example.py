@@ -1,4 +1,4 @@
-from microkanren import var, relational, Equals
+from microkanren import var, relational, Equals, ground
 
 
 @relational
@@ -26,9 +26,18 @@ def append(l, s, o):
              append(d, s, r)))
 
 
-x = var('x')
-q = var('q')
-body = (x == q) & (x == 3)
+def append_test():
+    x = var("x")
+    y = var("y")
+    z = make_cons(5)
+    for sol in append(x, y, z).run():
+        # print(sol[x], sol[y])
+        print(ground(x, sol), ground(y, sol))
 
-for solution in body.run():
-    print(solution[q])
+
+def example():
+    x = var('x')
+    q = var('q')
+    body = (x == q) & (x == 3)
+    for solution in body.run():
+        print(solution[q])
